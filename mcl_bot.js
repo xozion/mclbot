@@ -132,8 +132,11 @@ function parseMenu(window) {
     }); //end of parsing
 
     //console.log(menu);
+    if (menu[0].length == 0)
+        console.log("No daily dishes this wekk");
 
     var x = 0;
+
     menu.forEach(function(category)
     {
         var tmp = [];
@@ -142,7 +145,8 @@ function parseMenu(window) {
             dish[1] = dish[1].substring(2, dish[1].length) + "€";
             tmp.push(dish.join(' '));
         });
-        menuText[x] = tmp.join('\n');
+        if (!(x==0 && menu[0].length == 0)) //dont add anything if no daily dishes
+            menuText[x] = tmp.join('\n');
         x++;
     }); //menutext successfully created
 
@@ -196,14 +200,20 @@ function sendMenuText(menuText, message) {
             if (id > 5 || id == 0)
                 id = 1;
 
-            var dailyDishes = menuText[0].split('\n');
+            var dish = "";
             var todayDishes = menuText[id].split('\n');
-            var possibilities = dailyDishes.length + todayDishes.length - 1;
-
-            var chosen = Math.floor(Math.random() * (possibilities + 1));
-            console.log("Nummer " + chosen);
-
-            var dish = (chosen > dailyDishes.length) ? todayDishes[chosen-dailyDishes.length] : dailyDishes[chosen];
+            if (typeof menuText[0] === 'undefined')
+            {
+                var chosen = Math.floor((Math.random() * todayDishes.length));
+                dish = todayDishes[chosen];
+            }
+            else
+            {
+                var dailyDishes = menuText[0].split('\n');
+                var chosen = Math.floor((Math.random() * (dailyDishes.length + todayDishes.length)));
+                dish = (chosen > dailyDishes.length) ? todayDishes[chosen-dailyDishes.length] : dailyDishes[chosen];
+            }
+           
             answer.text = "Du isst heute " + dish;
             id = -1;
         }
@@ -271,10 +281,6 @@ function runCommand(message) {
             return true;
         } else if(command == "HELP" || command == "?" || (command.startsWith("HELP")) && command.indexOf("@MCL_BOT") != -1) {
             sendHelp(message);
-        } else if (command == "REFRESH" || (command.startsWith("HELP")) && command.indexOf("@MCL_BOT") != -1) {
-            message.text = "menu woche";
-            refreshCache();
-            console.log("Cache refresh initiated.");
         } else {
             console.log("omg omg omg, what shall i do?!");
         }
