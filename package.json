@@ -1,0 +1,8 @@
+{
+  "name": "mclBot",
+  "dependencies": {
+    "jsdom": "8.0.4",
+    "unirest": "0.4.2",
+    "jquery": "2.2.1"
+  }
+}
