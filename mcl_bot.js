@@ -10,99 +10,106 @@ var menuText = new Array(6);
 var dateOfRefresh = undefined;
 
 //infinite recursive callback loop
-function poll(offset) {
+function poll(offset)
+{
     var url;
     if (offset == -1)
         url = POLLING_URL.replace("offset=:offset:&", '');
     else
         url = POLLING_URL.replace(":offset:", offset);
-    
+
     unirest
-    .get(url)
-    .end(function(response)
-    {
-        var body = response.raw_body;
-        if (response.status == 200)
+        .get(url)
+        .end(function (response)
         {
-            var jsonData = JSON.parse(body);
-            var result = jsonData.result;
-            var max_offset = -1;
-                //console.log("Got result!");
-            if (result.length > 0)
+            var body = response.raw_body;
+            if (response.status == 200)
             {
-                for (i in result)
+                var jsonData = JSON.parse(body);
+                var result = jsonData.result;
+                var max_offset = -1;
+                //console.log("Got result!");
+                if (result.length > 0)
                 {
-                    try
+                    for (var i in result)
                     {
-                        if ((result[i].message.date * 1000) <= (new Date().getTime() - 90 * 1000) )
+                        try
                         {
-                            console.log("Found a message in queue older than 90s..skipping.");
-                            continue;
+                            if ((result[i].message.date * 1000) <= (new Date().getTime() - 90 * 1000))
+                            {
+                                console.log("Found a message in queue older than 90s..skipping.");
+                                continue;
+                            }
+
+                            runCommand(result[i].message);
                         }
-
-                        if (runCommand(result[i].message)) continue;
+                        catch (err)
+                        {
+                            console.log("error occured: " + err.message);
+                        }
                     }
-                    catch (err)
-                    {
-                        console.log("error occured: " + err.message);
-                    }
+                    max_offset = parseInt(result[result.length - 1].update_id) + 1; // update max offset
                 }
-                max_offset = parseInt(result[result.length - 1].update_id) + 1; // update max offset
+                poll(max_offset);
             }
-            poll(max_offset);
-        }
-    });
-};
+        });
+}
 
-var capsme = function(message) {
+var capsMe = function (message)
+{
     var caps = message.text.toUpperCase();
     var answer = {
-        chat_id : message.chat.id,
-        text : "You told me to do something, so I took your input and made it all caps. Look: " + caps
+        chat_id: message.chat.id,
+        text: "You told me to do something, so I took your input and made it all caps. Look: " + caps
     };
- 
+
     unirest
-    .post(SEND_MESSAGE_URL)
-    .send(answer)
-    .end(function (response) {
+        .post(SEND_MESSAGE_URL)
+        .send(answer)
+        .end(function (response)
+        {
             if (response.status == 200) console.log("Successfully sent message to " + message.chat.id);
         });
 };
 
-function sendMenu(message) {
+function sendMenu(message)
+{
     var cached = true;
-    for (var i = 1; i < 6; i++) {   //check if menutext exists (except index 0 (daily dishes) which might be null anyways)
-        if (menuText[i] == null || menuText[i].length <= 0) {
+    for (var i = 1; i < 6; i++)
+    {   //check if menutext exists (except index 0 (daily dishes) which might be null anyways)
+        if (menuText[i] == null || menuText[i].length <= 0)
+        {
             cached = false;
             break;
         }
     }
 
-    if (cached == false || dateOfRefresh < new Date().getWeekNumber() )
+    if (cached == false || dateOfRefresh < new Date().getWeekNumber())
     {
         console.log("No cached data... refreshing menu");
         refreshCache(message);
-    } 
+    }
     else
-    { 
-        console.log("cached data valid. last refresh @ week no. " + dateOfRefresh)
+        {
+        console.log("cached data valid. last refresh @ week no. " + dateOfRefresh);
         sendMenuText(menuText, message);
     }
-};
+}
 
-function parseMenu(window) {
+function parseMenu(window)
+{
     var id = 0;
     var menu = new Array(6);
 
     console.log("Parsing speiseplan..");
     $ = require('jquery')(window);
 
-    $("table tbody").each(function()    // 5 bodies, 6 categories
+    $("table tbody").each(function ()    // 5 bodies, 6 categories
     {
         var arrayOfThisDay = [];
         var rows = $(this).find('tr');
 
-        rows.each(function()  // x rows
+        rows.each(function ()  // x rows
         {
             var arrayOfThisRow = [];
 
@@ -110,7 +117,7 @@ function parseMenu(window) {
 
             if (tableData.length > 0)
             {
-                tableData.each(function()
+                tableData.each(function ()
                 {
                     //arrayOfThisRow.push($(this).text());
                     arrayOfThisRow.push($(this).html());    //html to keep formatting
@@ -137,15 +144,14 @@ function parseMenu(window) {
 
     var x = 0;
 
-    menu.forEach(function(category)
-    {
+    menu.forEach(function (category) {
         var tmp = [];
-        category.forEach(function(dish)
+        category.forEach(function (dish)
         {
             dish[1] = dish[1].substring(2, dish[1].length) + "€";
             tmp.push(dish.join(' '));
         });
-        if (!(x==0 && menu[0].length == 0)) //dont add anything if no daily dishes
+        if (!(x == 0 && menu[0].length == 0)) //dont add anything if no daily dishes
             menuText[x] = tmp.join('\n');
         x++;
     }); //menutext successfully created
@@ -153,11 +159,12 @@ function parseMenu(window) {
     dateOfRefresh = new Date().getWeekNumber();
 }
 
-function sendMenuText(menuText, message) {
-     var answer = {
-        chat_id : message.chat.id,
-        text : "",
-        parse_mode : "HTML"
+function sendMenuText(menuText, message)
+{
+    var answer = {
+        chat_id: message.chat.id,
+        text: "",
+        parse_mode: "HTML"
     };
 
     var command = message.text.substring(1, message.text.indexOf(" "));
@@ -173,28 +180,41 @@ function sendMenuText(menuText, message) {
         out.push("<i>Heute gibt es:</i>");
     }
     else
-    {
-        var param = message.text.substring(message.text.indexOf(" ")+1, message.text.length).toUpperCase();
+        {
+        var param = message.text.substring(message.text.indexOf(" ") + 1, message.text.length).toUpperCase();
         console.log("parameters " + param);
 
-        if (param.startsWith("MO")) {
+        if (param.startsWith("MO"))
+        {
             out.push("<i>Der Speiseplan am Montag:</i>");
             id = 1;
-        } else if (param.startsWith("DI")) {
+        }
+        else if (param.startsWith("DI"))
+        {
             out.push("<i>Der Speiseplan am Dienstag:</i>");
             id = 2;
-        } else if (param.startsWith("MI")) {
+        }
+        else if (param.startsWith("MI"))
+        {
             out.push("<i>Der Speiseplan am Mittwoch:</i>");
             id = 3;
-        } else if (param.startsWith("DO")) {
+        }
+        else if (param.startsWith("DO"))
+        {
             out.push("<i>Der Speiseplan am Donnerstag:</i>");
             id = 4;
-        } else if (param.startsWith("FR")) {
+        }
+        else if (param.startsWith("FR"))
+        {
             out.push("<i>Der Speiseplan am Freitag:</i>");
             id = 5;
-        } else if (param.startsWith("WOCHE")) {
+        }
+        else if (param.startsWith("WOCHE"))
+        {
             answer.text = "<i>Der Speiseplan der Woche:</i>\n" + menuText.join('\n\n');
-        } else if (param == "RAN") {
+        }
+        else if (param == "RAN")
+        {
             id = new Date().getDay();
 
             if (id > 5 || id == 0)
@@ -211,9 +231,9 @@ function sendMenuText(menuText, message) {
             {
                 var dailyDishes = menuText[0].split('\n');
                 var chosen = Math.floor((Math.random() * (dailyDishes.length + todayDishes.length)));
-                dish = (chosen > dailyDishes.length) ? todayDishes[chosen-dailyDishes.length] : dailyDishes[chosen];
+                dish = (chosen > dailyDishes.length) ? todayDishes[chosen - dailyDishes.length] : dailyDishes[chosen];
             }
-           
+
             answer.text = "Du isst heute " + dish;
             id = -1;
         }
@@ -222,77 +242,123 @@ function sendMenuText(menuText, message) {
     if (id != -1)
     {
         out.push(menuText[0]);
-        out.push(menuText[id])
+        out.push(menuText[id]);
         answer.text = out.join('\n');
     }
 
     // send menu to chat
     unirest
-    .post(SEND_MESSAGE_URL)
-    .send(answer)
-    .end(function (response)
-    {
-        if (response.status == 200)
-            console.log("Successfully sent menu to " + message.chat.id);
-        else
-            console.log("Not able to send message..Err " + response.status);
-    });
+        .post(SEND_MESSAGE_URL)
+        .send(answer)
+        .end(function (response) {
+            if (response.status == 200)
+                console.log("Successfully sent menu to " + message.chat.id);
+            else
+                console.log("Not able to send message..Err " + response.status);
+        });
 }
 
-function sendHelp(message) {
+function sendHelp(message)
+{
     var answer = {
-        chat_id : message.chat.id,
-        text : "<b>Mitteldorf Catering Speiseplan - Bot!</b>\nSende <b>\/[menu|futter|food]</b> für den heutigen Speiseplan\nSende <b>\/[menu|futter|food]</b> <i>tag</i> um den Speiseplan an einem bestimmten Wochentag abzurufen\nSende <b>\/menu</b> <i>woche</i> für den Speiseplan der gesamten Woche\nSende <b>\/refresh</b> um den Speiseplan bei einem Fehler zu aktualisieren",
-        parse_mode : "HTML"
+        chat_id: message.chat.id,
+        text: "<b>Mitteldorf Catering Speiseplan - Bot!</b>\nSende <b>\/[menu|futter|food]</b> für den heutigen Speiseplan\nSende <b>\/[menu|futter|food]</b> <i>tag</i> um den Speiseplan an einem bestimmten Wochentag abzurufen\nSende <b>\/menu</b> <i>woche</i> für den Speiseplan der gesamten Woche\nSende <b>\/refresh</b> um den Speiseplan bei einem Fehler zu aktualisieren",
+        parse_mode: "HTML"
     };
 
     unirest
-    .post(SEND_MESSAGE_URL)
-    .send(answer)
-    .end(function (response)
-    {
-        if (response.status == 200)
-            console.log("Successfully sent help to " + message.chat.id);
-        else
-            console.log("Not able to send message..Err " + response.status);
-    });
+        .post(SEND_MESSAGE_URL)
+        .send(answer)
+        .end(function (response)
+        {
+            if (response.status == 200)
+                console.log("Successfully sent help to " + message.chat.id);
+            else
+                console.log("Not able to send message..Err " + response.status);
+        });
 }
 
-function runCommand(message) {
+function sendBeerTime(message)
+{
+    var answerText = "";
+    var date = new Date();
+    if (date.getDay() == 0 || date.getDay() == 6)
+    {
+        answerText = "Na klar, es ist Wochenende, da ist immer die richtige Zeit ein Bier zu trinken!";
+    }
+    else if (date.getHours() > 15)
+    {
+        answerText = "Oh ja, es ist Zeit ein Bier zu trinken!";
+    }
+    else
+    {
+        answerText = "Nein, es ist leider noch nicht Zeit ein Bier zu trinken..";
+    }
+    var answer = {
+        chat_id: message.chat.id,
+        text: answerText,
+        parse_mode: "HTML"
+    };
+
+    unirest
+        .post(SEND_MESSAGE_URL)
+        .send(answer)
+        .end(function (response)
+        {
+            if (response.status == 200)
+                console.log("Successfully sent help to " + message.chat.id);
+            else
+                console.log("Not able to send message..Err " + response.status);
+        });
+}
+function runCommand(message)
+{
     var msgtext = message.text;
- 
-    if (msgtext != undefined) {
-        if (msgtext.indexOf("/") != 0) { 
+
+    if (msgtext != undefined)
+    {
+        if (msgtext.indexOf("/") != 0)
             return false; // no slash at beginning?
-        }
+
         var command = msgtext.substring(1, msgtext.indexOf(" "));
         if (command.length == 1)    //command only without parameters
             command = msgtext.substring(1, msgtext.length);
 
         console.log("Command: " + msgtext.substring(1, msgtext.length).toUpperCase());
-        
+
         command = command.toUpperCase();
 
-        if (command == "CAPSME") {
-            capsme(message);
+        if (command == "CAPSME")
+        {
+            capsMe(message);
             return true;
-        } else if (command.startsWith("FUTTER") || command.startsWith("FOOD") || command == "MENU") {
+        }
+        else if (command.startsWith("FUTTER") || command.startsWith("FOOD") || command == "MENU")
+        {
             sendMenu(message);
             return true;
-        } else if(command == "HELP" || command == "?" || (command.startsWith("HELP")) && command.indexOf("@MCL_BOT") != -1) {
+        }
+        else if (command == "HELP" || command == "?" || (command.startsWith("HELP")) && command.indexOf("@MCL_BOT") != -1)
+        {
             sendHelp(message);
-        } else {
+        }
+        else if (command == "BIER" || command == "BEER")
+        {
+            sendBeerTime(message);
+        }
+        else
+        {
             console.log("omg omg omg, what shall i do?!");
         }
     }
     return false;
-};
+}
 
-function refreshCache(message) {
+function refreshCache(message)
+{
     var speisePlanURL = '';
 
-    jsdom.env("http://www.mitteldorf-catering.de/", [], function (err, window)
-    {
+    jsdom.env("http://www.mitteldorf-catering.de/", [], function (err, window) {
         speisePlanURL = window.document.getElementsByClassName("speiseplan")[0].href;
 
         if (speisePlanURL == undefined || speisePlanURL == '')
@@ -312,11 +378,12 @@ function refreshCache(message) {
     });    //end of jsdom callback
 }
 
-Date.prototype.getWeekNumber = function(){
+Date.prototype.getWeekNumber = function ()
+{
     var d = new Date(+this);
-    d.setHours(0,0,0);
-    d.setDate(d.getDate()+4-(d.getDay()||7));
-    return Math.ceil((((d-new Date(d.getFullYear(),0,1))/8.64e7)+1)/7);
+    d.setHours(0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    return Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
 };
 
 console.log("MCL Bot started! Poll poll poll...");
