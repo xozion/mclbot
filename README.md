@@ -8,6 +8,7 @@ Requirements:
 
 Installation:
 ```
+$ echo '%PASTE_OUR_SHARED_TOKEN_SECRET_HERE%' > ./.token
 $ npm install
 $ nodejs mcl_bot.js
 ```

@@ -1,15 +1,28 @@
-var jsdom = require('jsdom');
-var unirest = require('unirest');
-var $ = require('jquery');
+/**
+ * Configure command
+ */
+try {
+    var jsdom            = require('jsdom');
+    var unirest          = require('unirest');
+    var $                = require('jquery');
+    var fs               = require('fs');
+    var token            = fs.readFileSync('./.token', {"encoding": "utf8"});
+    var BASE_URL         = "https://api.telegram.org/bot:secret:/".replace(":secret:", token).replace(/(\n|\r)+/, '');
+    var POLLING_URL      = BASE_URL + "getUpdates?offset=:offset:&timeout=60";
+    var SEND_MESSAGE_URL = BASE_URL + "sendMessage";
+    var menuText         = new Array(6);
+    var dateOfRefresh    = undefined;
+} catch (err) {
+    console.error('A dependency error occurred: ' + err.message);
+    console.error('RTFM (README.md)');
+    process.exit(1);
+}
 
-var BASE_URL = "https://api.telegram.org/bot207341699:AAErTB0ccSieppTw3jAA2AMWk3_St4zNnIk/";
-var POLLING_URL = BASE_URL + "getUpdates?offset=:offset:&timeout=60";
-var SEND_MESSAGE_URL = BASE_URL + "sendMessage";
-
-var menuText = new Array(6);
-var dateOfRefresh = undefined;
-
-//infinite recursive callback loop
+/**
+ * Infinite recursive callback loop
+ *
+ * @param offset
+ */
 function poll(offset)
 {
     var url;
@@ -55,6 +68,9 @@ function poll(offset)
         });
 }
 
+/**
+ * @param message
+ */
 var capsMe = function (message)
 {
     var caps = message.text.toUpperCase();
@@ -72,6 +88,9 @@ var capsMe = function (message)
         });
 };
 
+/**
+ * @param message
+ */
 function sendMenu(message)
 {
     var cached = true;
@@ -96,6 +115,9 @@ function sendMenu(message)
     }
 }
 
+/**
+ * @param window
+ */
 function parseMenu(window)
 {
     var id = 0;
@@ -159,6 +181,10 @@ function parseMenu(window)
     dateOfRefresh = new Date().getWeekNumber();
 }
 
+/**
+ * @param menuText
+ * @param message
+ */
 function sendMenuText(menuText, message)
 {
     var answer = {
@@ -258,6 +284,9 @@ function sendMenuText(menuText, message)
         });
 }
 
+/**
+ * @param message
+ */
 function sendHelp(message)
 {
     var answer = {
@@ -278,6 +307,9 @@ function sendHelp(message)
         });
 }
 
+/**
+ * @param message
+ */
 function sendBeerTime(message)
 {
     var answerText = "";
@@ -311,6 +343,11 @@ function sendBeerTime(message)
                 console.log("Not able to send message..Err " + response.status);
         });
 }
+
+/**
+ * @param message
+ * @returns {boolean}
+ */
 function runCommand(message)
 {
     var msgtext = message.text;
@@ -354,6 +391,9 @@ function runCommand(message)
     return false;
 }
 
+/**
+ * @param message
+ */
 function refreshCache(message)
 {
     var speisePlanURL = '';
@@ -378,6 +418,9 @@ function refreshCache(message)
     });    //end of jsdom callback
 }
 
+/**
+ * @returns {number}
+ */
 Date.prototype.getWeekNumber = function ()
 {
     var d = new Date(+this);
@@ -386,5 +429,6 @@ Date.prototype.getWeekNumber = function ()
     return Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
 };
 
+/** Run */
 console.log("MCL Bot started! Poll poll poll...");
 poll();
