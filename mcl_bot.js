@@ -272,6 +272,10 @@ function sendMenuText(menuText, message)
         answer.text = out.join('\n');
     }
 
+
+    //convert html characters
+    answer.text = answer.text.decodeHTML();
+
     // send menu to chat
     unirest
         .post(SEND_MESSAGE_URL)
@@ -282,6 +286,14 @@ function sendMenuText(menuText, message)
             else
                 console.log("Not able to send message..Err " + response.status);
         });
+}
+
+function HtmlEncode(s) {
+    return $('<div>').text(s).html();
+}
+
+function HtmlDecode(s) {
+    return $('<div>').html(s).text();
 }
 
 /**
@@ -370,12 +382,12 @@ function runCommand(message)
             capsMe(message);
             return true;
         }
-        else if (command.startsWith("FUTTER") || command.startsWith("FOOD") || command == "MENU")
+        else if (command.startsWith("FUTTER") || command.startsWith("FOOD") || command.startsWith("MENU"))
         {
             sendMenu(message);
             return true;
         }
-        else if (command == "HELP" || command == "?" || (command.startsWith("HELP")) && command.indexOf("@MCL_BOT") != -1)
+        else if (command == "HELP" || command == "?" || ((command.startsWith("HELP")) && command.indexOf("@MCL_BOT") != -1))
         {
             sendHelp(message);
         }
@@ -427,6 +439,20 @@ Date.prototype.getWeekNumber = function ()
     d.setHours(0, 0, 0);
     d.setDate(d.getDate() + 4 - (d.getDay() || 7));
     return Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
+};
+
+/**
+ * @returns {string}
+ */
+String.prototype.decodeHTML = function() {
+    var map = {"gt":">", "lt":"<", "nbsp":" ", "amp":"&", "quot":"'" /* , … */};
+    return this.replace(/&(#(?:x[0-9a-f]+|\d+)|[a-z]+);?/gi, function($0, $1) {
+        if ($1[0] === "#") {
+            return String.fromCharCode($1[1].toLowerCase() === "x" ? parseInt($1.substr(2), 16)  : parseInt($1.substr(1), 10));
+        } else {
+            return map.hasOwnProperty($1) ? map[$1] : $0;
+        }
+    });
 };
 
 /** Run */
