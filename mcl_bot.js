@@ -12,10 +12,21 @@ try {
     var SEND_MESSAGE_URL = BASE_URL + "sendMessage";
     var menuText         = new Array(6);
     var dateOfRefresh    = undefined;
+    var MAX_MESSAGE_AGE  = 90;
+    var timezoneOffset   = new Date().getTimezoneOffset * 60;
 } catch (err) {
     console.error('A dependency error occurred: ' + err.message);
     console.error('RTFM (README.md)');
     process.exit(1);
+}
+
+/**
+ * Convert seconds to time string (hh:mm:ss).
+ *
+ * @param Integer s
+ */
+function time(s) {
+    return new Date(s * 1000).toISOString().slice(-13, -5);
 }
 
 /**
@@ -41,16 +52,16 @@ function poll(offset)
                 var jsonData = JSON.parse(body);
                 var result = jsonData.result;
                 var max_offset = -1;
-                //console.log("Got result!");
+                //console.log("Got " + result.length + " results!");
                 if (result.length > 0)
                 {
                     for (var i in result)
                     {
                         try
                         {
-                            if ((result[i].message.date * 1000) <= (new Date().getTime() - 90 * 1000))
+                            if ((result[i].message.date + timezoneOffset) <= (new Date().getTime() / 1000 - MAX_MESSAGE_AGE))
                             {
-                                console.log("Found a message in queue older than 90s..skipping.");
+                                console.log("[" + new Date().toISOString().slice(-13, -5) + "] Skipped a message in queue from " + time(result[i].message.date + timezoneOffset) + " (older than " + MAX_MESSAGE_AGE + ")");
                                 continue;
                             }
 
